@@ -1,0 +1,28 @@
+#!/bin/zsh
+# Installs the DANGEO and ENOVUS signatures into Apple Mail with ONLINE image links
+# (so Gmail/Outlook show them) and locks the files so Mail can't re-embed the images.
+# Before running: in Mail > Settings > Signatures create two signatures whose text
+# contains the words DANGEO and ENOVUS (e.g. just type "DANGEO" / "ENOVUS"). Then quit Mail.
+setopt NULL_GLOB
+osascript -e 'tell application "Mail" to quit' 2>/dev/null; sleep 2
+
+BACKUP=~/Desktop/mail_signature_backup_$(date +%Y%m%d-%H%M%S); mkdir -p "$BACKUP"
+
+DANGEO_HTML='<body style="word-wrap: break-word; -webkit-nbsp-mode: space; line-break: after-white-space;"><table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;"><tr><td style="vertical-align:middle;padding-right:16px;"><img src="https://dangeoenergy.com/wp-content/uploads/2024/10/DANGEO-no-bg-1-300x127.png" width="130" alt="DANGEO Energy" style="display:block;border:0;"></td><td style="vertical-align:middle;border-left:2px solid #C8312C;padding-left:16px;"><div style="font-size:15px;font-weight:bold;color:#222222;">Giorgi Abuladze</div><div style="font-size:12px;color:#6FA136;padding-top:2px;">CEO &amp; Co-Founder</div><div style="font-size:12px;font-weight:bold;color:#222222;padding-top:8px;padding-bottom:4px;">DANGEO Energy</div><div style="font-size:12px;color:#444444;line-height:20px;"><img src="https://img.icons8.com/ios-filled/50/6fa136/phone.png" alt="M" width="14" height="14" style="vertical-align:middle;border:0;margin-right:6px;"><a href="tel:+995599392893" style="color:#444444;text-decoration:none;">+995 599 39 28 93</a></div><div style="font-size:12px;color:#444444;line-height:20px;"><img src="https://img.icons8.com/ios-filled/50/6fa136/new-post.png" alt="E" width="14" height="14" style="vertical-align:middle;border:0;margin-right:6px;"><a href="mailto:g@dangeoenergy.com" style="color:#444444;text-decoration:none;">g@dangeoenergy.com</a></div><div style="font-size:12px;color:#444444;line-height:20px;"><img src="https://img.icons8.com/ios-filled/50/6fa136/globe.png" alt="W" width="14" height="14" style="vertical-align:middle;border:0;margin-right:6px;"><a href="https://dangeoenergy.com" style="color:#6FA136;text-decoration:none;">dangeoenergy.com</a></div></td></tr></table></body>'
+
+ENOVUS_HTML='<body style="word-wrap: break-word; -webkit-nbsp-mode: space; line-break: after-white-space;"><table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;"><tr><td style="vertical-align:middle;padding-right:16px;"><img src="https://raw.githubusercontent.com/prowaytech/email-assets/main/enovus/enovus-signature-logo.png" width="150" alt="ENOVUS" style="display:block;border:0;"></td><td style="vertical-align:middle;border-left:3px solid #80F475;padding-left:16px;"><div style="font-size:15px;font-weight:bold;color:#222222;">Giorgi Abuladze</div><div style="font-size:12px;color:#053623;padding-top:2px;">Co-Founder</div><div style="font-size:12px;font-weight:bold;color:#222222;padding-top:8px;padding-bottom:4px;">Enovus Energy</div><div style="font-size:12px;color:#444444;line-height:20px;"><img src="https://img.icons8.com/ios-filled/50/053623/phone.png" alt="M" width="14" height="14" style="vertical-align:middle;border:0;margin-right:6px;"><a href="tel:+995599392893" style="color:#444444;text-decoration:none;">+995 599 39 28 93</a></div><div style="font-size:12px;color:#444444;line-height:20px;"><img src="https://img.icons8.com/ios-filled/50/053623/new-post.png" alt="E" width="14" height="14" style="vertical-align:middle;border:0;margin-right:6px;"><a href="mailto:giorgi@enovusenergy.com" style="color:#444444;text-decoration:none;">giorgi@enovusenergy.com</a></div><div style="font-size:12px;color:#444444;line-height:20px;"><img src="https://img.icons8.com/ios-filled/50/053623/globe.png" alt="W" width="14" height="14" style="vertical-align:middle;border:0;margin-right:6px;"><a href="https://enovusenergy.com" style="color:#053623;font-weight:bold;text-decoration:none;">enovusenergy.com</a></div></td></tr></table></body>'
+
+found_d=0; found_e=0
+for f in ~/Library/Mail/V*/MailData/Signatures/*.mailsignature ~/Library/Mobile\ Documents/com~apple~mail/Data/V*/MailData/Signatures/*.mailsignature; do
+  if grep -qi 'dangeo' "$f"; then kind=D; elif grep -qi 'enovus' "$f"; then kind=E; else continue; fi
+  chflags nouchg "$f"; cp "$f" "$BACKUP/"
+  header=$(awk 'NF==0{exit} {print}' "$f")
+  if [[ $kind == D ]]; then html=$DANGEO_HTML; found_d=1; else html=$ENOVUS_HTML; found_e=1; fi
+  printf '%s\n\n%s\n' "$header" "$html" > "$f"
+  chflags uchg "$f"
+  echo "Updated + locked ($kind): $f"
+done
+echo; [[ $found_d == 1 ]] || echo "!! No DANGEO signature found - create one containing the word DANGEO, quit Mail, run again."
+[[ $found_e == 1 ]] || echo "!! No ENOVUS signature found - create one containing the word ENOVUS, quit Mail, run again."
+echo "Backup of old files: $BACKUP"
+open -a Mail
